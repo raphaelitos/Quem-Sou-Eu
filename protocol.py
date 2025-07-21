@@ -1,27 +1,39 @@
 import json
 
-
-# Dicionário de tipos de mensagem utilizados no protocolo cliente-servidor.
+# Define tipos de mensagem usados tanto no lobby quanto no jogo
 MSG_TYPE = {
-    'SECRET': 'SECRET', # segredo que cada jogador escolhe
-    'START': 'START',  # flag para o comeco do jogo
-    'QUESTION': 'QUESTION',  # pergunta enviada 
-    'ANSWER': 'ANSWER', # resposta da pergunta ("sim" ou "não")
-    'GUESS': 'GUESS',  # palpite sobre o segredo adversário
-    'RESULT': 'RESULT', # resultado do palpite (True/False)
-    'TURN': 'TURN', # flag indicando qual jogador tem a vez
-    'END': 'END' # encerra o jogo apos palpite correto
+    # Lobby
+    'CREATE_ROOM': 'CREATE_ROOM', # Cliente quer criar nova sala
+    'ROOM_CREATED': 'ROOM_CREATED', # Servidor responde com código gerado
+    'JOIN_ROOM': 'JOIN_ROOM', # Cliente quer entrar em sala existente
+    'ROOM_JOINED': 'ROOM_JOINED', # Servidor confirma entrada na sala
+    'ERROR': 'ERROR', # Erro (lobby ou jogo)
+    'EXIT': 'EXIT', # Cliente decide sair
+    # Jogo
+    'SECRET': 'SECRET', # Segredo enviado por cada jogador
+    'START': 'START', # Início do jogo com IDs you/opponent
+    'QUESTION': 'QUESTION', # Pergunta sim/não enviada
+    'ANSWER': 'ANSWER', # Resposta à pergunta
+    'GUESS': 'GUESS', # Palpite sobre o segredo do oponente
+    'RESULT': 'RESULT', # Resultado do palpite (True/False)
+    'TURN': 'TURN', # Indica vez do jogador
+    'END': 'END' # Encerramento da partida
 }
 
 def pack(msg_type, content):
-    # Empacota uma mensagem em JSON para envio pelo socket.
-    return (json.dumps({'type': msg_type, 'content': content}) + '\n').encode()
+    """
+    Empacota tipo e conteúdo num JSON + '\n', para enviar via socket.
+    """
+    payload = {'type': msg_type, 'content': content}
+    return (json.dumps(payload) + '\n').encode()
+
 
 def unpack(data):
-    # Desempacota dados recebidos de um socket para obter tipo e conteúdo.
+    """
+    Extrai tipo e conteúdo de bytes JSON recebidos.
+    Considera apenas até o primeiro '\n'.
+    """
     text = data.decode().strip()
-    # Considera apenas a primeira linha JSON
     first, *_ = text.split('\n')
     obj = json.loads(first)
     return obj['type'], obj['content']
-
