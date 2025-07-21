@@ -8,8 +8,22 @@ from game import Game
 HOST = '0.0.0.0'
 PORT = 5000
 
-# Gerencia salas pendentes
-rooms = {}             # código -> Room
+# === framing por linha ===
+_buffers = {}  # conn -> bytes
+
+def recv_line(conn):
+    buf = _buffers.get(conn, b'')
+    while b'\n' not in buf:
+        chunk = conn.recv(1024)
+        if not chunk:
+            return None
+        buf += chunk
+    line, sep, rest = buf.partition(b'\n')
+    _buffers[conn] = rest
+    return line + sep
+
+# === gerenciamento de salas ===
+rooms = {}             # code -> Room
 rooms_lock = threading.Lock()
 
 class Room:
@@ -24,30 +38,25 @@ def generate_code(length=4):
 
 def handle_client(conn, addr):
     try:
-        # Primeiro, recebe CREATE_ROOM ou JOIN_ROOM
-        t, content = unpack(conn.recv(1024))
+        raw = recv_line(conn)
+        if raw is None:
+            conn.close()
+            return
+        t, content = unpack(raw)
+
         if t == MSG_TYPE['CREATE_ROOM']:
-            # cria sala nova
             code = generate_code()
             room = Room(code, conn)
             with rooms_lock:
                 rooms[code] = room
-            # envia confirmação com o código
             conn.send(pack(MSG_TYPE['ROOM_CREATED'], code))
             print(f"[Lobby] Sala {code} criada por {addr}, aguardando par...")
-            # espera que alguém entre
             room.ready.wait()
-
-            # quando pronto, inicia o jogo
-            opponent_conn = room.joiner
-            start_game(room.creator, opponent_conn)
-
-            # remove sala
+            start_game(room.creator, room.joiner)
             with rooms_lock:
                 del rooms[code]
 
         elif t == MSG_TYPE['JOIN_ROOM']:
-            # tenta entrar em sala existente
             code = content
             with rooms_lock:
                 room = rooms.get(code)
@@ -55,29 +64,24 @@ def handle_client(conn, addr):
                 conn.send(pack(MSG_TYPE['ERROR'], 'Sala não encontrada.'))
                 conn.close()
                 return
-            # registra quem entrou e sinaliza
             room.joiner = conn
             room.ready.set()
-            # confirma entrada
             conn.send(pack(MSG_TYPE['ROOM_JOINED'], code))
-            print(f"[Lobby] Cliente {addr} entrou na sala {code}.")
-            # criador vai receber ROOM_JOINED também imediatamente
             room.creator.send(pack(MSG_TYPE['ROOM_JOINED'], code))
+            print(f"[Lobby] Cliente {addr} entrou na sala {code}.")
 
-            # o criador e o joiner serão passados para start_game pela thread do criador
         else:
             conn.send(pack(MSG_TYPE['ERROR'], 'Comando inválido no lobby.'))
             conn.close()
+
     except Exception as e:
         print(f"[Erro no lobby] {e}")
         conn.close()
 
 def start_game(conn1, conn2):
-    """Função que roda a partida usando sua classe Game."""
     try:
         game = Game(conn1, conn2)
         game.setup()
-        # inicia turno do jogador 1
         game.send(1, MSG_TYPE['TURN'], None)
         game.loop()
     except Exception as e:

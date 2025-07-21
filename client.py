@@ -2,18 +2,37 @@ import socket
 import threading
 from protocol import *
 
-HOST = '172.24.220.27'  # IP do servidor
+HOST = '172.24.220.27'
 PORT = 5000
 
-def listen(sock):
+# === framing por linha no cliente ===
+_buffers = {}  # sock -> bytes
+
+def recv_line(sock):
+    buf = _buffers.get(sock, b'')
+    while b'\n' not in buf:
+        chunk = sock.recv(1024)
+        if not chunk:
+            return None
+        buf += chunk
+    line, sep, rest = buf.partition(b'\n')
+    _buffers[sock] = rest
+    return line + sep
+
+def listen(sock, game_over_evt):
+    """Thread que consome mensagens do servidor; sinaliza game_over_evt no END."""
     while True:
-        data = sock.recv(1024)
-        if not data:
+        raw = recv_line(sock)
+        if raw is None:
+            # conexão fechou inesperadamente
+            game_over_evt.set()
             break
-        t, content = unpack(data)
+
+        t, content = unpack(raw)
 
         if t == MSG_TYPE['START']:
             you = content['you']
+
         elif t == MSG_TYPE['TURN']:
             action = input("Duvida (D) ou palpite (P)? ").strip().upper()
             if action == 'D':
@@ -35,13 +54,16 @@ def listen(sock):
 
         elif t == MSG_TYPE['END']:
             print("Fim de jogo:", content)
+            game_over_evt.set()
             break
 
         elif t == MSG_TYPE['ERROR']:
             print("Erro:", content)
+            game_over_evt.set()
             break
 
 def lobby(sock):
+    """Mostra o menu de criar/entrar sala. Retorna True para iniciar jogo, False para sair."""
     while True:
         print("\n=== MENU ===")
         print("1. Criar sala")
@@ -51,12 +73,19 @@ def lobby(sock):
 
         if opt == '1':
             sock.send(pack(MSG_TYPE['CREATE_ROOM'], None))
-            t, code = unpack(sock.recv(1024))
+            raw = recv_line(sock)
+            if raw is None:
+                print("Servidor desconectou.")
+                return False
+            t, code = unpack(raw)
             if t == MSG_TYPE['ROOM_CREATED']:
                 print(f"Sala criada! Código: {code}")
                 print("Aguardando oponente...")
-                # espera confirmação de ROOM_JOINED
-                t2, _ = unpack(sock.recv(1024))
+                raw2 = recv_line(sock)
+                if raw2 is None:
+                    print("Servidor desconectou.")
+                    return False
+                t2, _ = unpack(raw2)
                 if t2 == MSG_TYPE['ROOM_JOINED']:
                     print("Oponente entrou! Iniciando partida...\n")
                     return True
@@ -64,7 +93,11 @@ def lobby(sock):
         elif opt == '2':
             code = input("Código da sala: ").strip().upper()
             sock.send(pack(MSG_TYPE['JOIN_ROOM'], code))
-            t, content = unpack(sock.recv(1024))
+            raw = recv_line(sock)
+            if raw is None:
+                print("Servidor desconectou.")
+                return False
+            t, content = unpack(raw)
             if t == MSG_TYPE['ROOM_JOINED']:
                 print("Entrou na sala! Iniciando partida...\n")
                 return True
@@ -78,20 +111,29 @@ def lobby(sock):
         else:
             print("Opção inválida.")
 
+def play(sock):
+    """Fluxo de jogo: envia SECRET e inicia thread de escuta até END."""
+    secret = input("Defina o que o outro deve adivinhar: ")
+    sock.send(pack(MSG_TYPE['SECRET'], secret))
+
+    game_over = threading.Event()
+    t = threading.Thread(target=listen, args=(sock, game_over), daemon=True)
+    t.start()
+
+    # aguarda sinal de END ou ERROR na thread de escuta
+    game_over.wait()
+
 def main():
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.connect((HOST, PORT))
+    while True:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.connect((HOST, PORT))
 
-        if not lobby(sock):
-            print("Saindo...")
-            return
+            if not lobby(sock):
+                print("Saindo...")
+                break
 
-        # segue o fluxo original
-        secret = input("Defina o que o outro deve adivinhar: ")
-        sock.send(pack(MSG_TYPE['SECRET'], secret))
-
-        threading.Thread(target=listen, args=(sock,), daemon=True).start()
-        threading.Event().wait()
+            play(sock)
+            print("\n--- Retornando ao menu ---\n")
 
 if __name__ == '__main__':
     main()
