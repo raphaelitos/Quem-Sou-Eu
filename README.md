@@ -1,16 +1,16 @@
-# 🎮 Quem Sou Eu? – Jogo em Rede com Python e Sockets
+# Quem Sou Eu? – Jogo em Rede com Python e Sockets
 
 Este projeto é um jogo interativo de adivinhação chamado **"Quem Sou Eu?"**, desenvolvido em Python com comunicação entre **duas máquinas via sockets**. O projeto foi criado como parte da disciplina de **Redes de Computadores**, com o objetivo de explorar conceitos de comunicação cliente-servidor.
 
 ---
 
-## 🧠 Sobre o Jogo
+## Sobre o Jogo
 
 O jogo consiste em dois jogadores: um define uma "personalidade" (pessoa famosa, personagem, etc.) e o outro tenta adivinhar fazendo perguntas de sim/não, com base nas respostas recebidas. A comunicação entre os jogadores acontece via rede local (TCP/IP).
 
 ---
 
-## 📌 Objetivos do Projeto
+## Objetivos do Projeto
 
 - Implementar comunicação cliente-servidor usando **sockets TCP em Python**
 - Aplicar conceitos de redes: IP, porta, conexão, troca de mensagens
@@ -19,48 +19,49 @@ O jogo consiste em dois jogadores: um define uma "personalidade" (pessoa famosa,
 
 ---
 
-## 🛠️ Tecnologias Utilizadas
+## Tecnologias Utilizadas
 
 - **Python 3.x**
-- Biblioteca padrão `socket`
-- (Opcional) `threading` para múltiplas conexões
-- Execução em terminal
+- `socket` – Comunicação TCP/IP entre cliente e servidor
+- `threading` – Gerenciamento de múltiplas conexões (para versões futuras)
+- `json` – Estruturação das mensagens trocadas
+- Interface em **linha de comando (terminal)**
 
 ---
 
 ## 📁 Estrutura do Projeto
 
 ```
-
-quem-sou-eu/
-├── cliente.py         # Código do cliente (jogador que adivinha)
-├── servidor.py        # Código do servidor (jogador que escolhe)
+Quem-Sou-Eu/
+├── client.py         # Código do cliente (jogadores)
+├── game.py         # Código das regras de jogo (Quem sou eu)
+├── protocol.py
+├── server.py        # Código do servidor que hospeda as partidas
 ├── README.md
-
-````
+```
 
 ---
 
-## 🚀 Como Executar
+## Como Executar
 
 ### 1. Clonar o repositório
 
 ```bash
 git clone https://github.com/seu-usuario/Quem-Sou-Eu.git
-cd quem-sou-eu
-````
-
-### 2. Executar o servidor (máquina 1)
-
-```bash
-python servidor.py
+cd Quem-Sou-Eu
 ```
 
-### 3. Executar o cliente (máquina 2)
+### 2. Executar o servidor
 
 ```bash
-python cliente.py
+python3 server.py
 ```
 
-> Certifique-se de que ambas as máquinas estão na **mesma rede local** e que o **IP e porta** do servidor estão corretamente configurados no cliente.
+### 3. Executar o cliente
+
+```bash
+python3 client.py
+```
+
+> Certifique-se de que as máquinas estão na **mesma rede local** e que o **IP e porta** do servidor estão corretamente configurados no cliente. É possível usar VPN para conexões entre as máquinas.
 
