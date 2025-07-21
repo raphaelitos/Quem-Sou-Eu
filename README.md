@@ -65,3 +65,17 @@ python3 client.py
 
 > Certifique-se de que as máquinas estão na **mesma rede local** e que o **IP e porta** do servidor estão corretamente configurados no cliente. É possível usar VPN para conexões entre as máquinas.
 
+## Funcionalidades Implementadas
+
+- Comunicação via **sockets TCP**
+- Estrutura cliente-servidor funcional
+- Interface no terminal para interação do jogador
+- Sistema de **perguntas e respostas por turnos**
+- Validação de **respostas de sim/não**
+- Sistema de **palpite de identidade** com verificação automática
+- Suporte a múltiplas sessões simultâneas com threads (várias duplas jogando ao mesmo tempo)
+
+## Possíveis Melhorias Futuras
+
+- Login de jogadores com salas privadas e tokens de convite
+- Interface gráfica usando **Tkinter**, **PyQt** ou web com **Flask + WebSockets**
