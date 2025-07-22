@@ -83,6 +83,12 @@ def handle_client(conn, addr):
                 conn.send(pack(MSG_TYPE['ERROR'], 'Sala não encontrada.'))
                 conn.close()
                 return
+            
+            if room.joiner is not None:
+                conn.send(pack(MSG_TYPE['ERROR'], 'Sala cheia.'))
+                conn.close()
+                return
+            
             room.joiner = conn
             room.ready.set()
             conn.send(pack(MSG_TYPE['ROOM_JOINED'], code))
