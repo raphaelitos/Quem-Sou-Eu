@@ -63,7 +63,7 @@ def listen(sock, game_over_evt):
 
         elif t == MSG_TYPE['END']:
             # partida finalizada
-            print("Fim de jogo:", content)
+            print("\nFim de jogo:", content)
             game_over_evt.set()
             break
 
